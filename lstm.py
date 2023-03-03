@@ -4,6 +4,14 @@ import matplotlib.pyplot as plt
 from keras.models import Sequential
 from keras.layers import LSTM, Dense
 
+# from GeckoApiTools import getCoinData
+
+# bitcoin_data = getCoinData("bitcoin")
+
+# prices = bitcoin_data[0]
+# market_caps = bitcoin_data[1]
+# volumes = bitcoin_data[2]
+
 data_op = pd.read_csv("BTC-USD.csv", usecols=[1])
 
 #normalizing the data to values between -1 and 1 since LSTM uses 
@@ -95,5 +103,3 @@ plt.plot(test_y, label = "test_y")
 plt.plot(test_predictions, label = "test_predictions")
 plt.legend(title = "Legend")
 plt.show()
-
-
