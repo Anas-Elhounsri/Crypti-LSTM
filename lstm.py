@@ -5,7 +5,6 @@ import math
 from keras.models import Sequential
 from keras.layers import LSTM, Dense
 import math
-from sklearn.preprocessing import MinMaxScaler
 
 data_op = pd.read_csv("BTC-USD.csv", usecols=[1])
 
