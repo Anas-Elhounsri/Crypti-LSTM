@@ -1,7 +1,7 @@
-import json
 from pycoingecko import CoinGeckoAPI
 import  boto3
 import csv
+from datetime import datetime
 
 cg = CoinGeckoAPI()
 
@@ -14,25 +14,40 @@ def getCoinsList():
 
 def lambda_handler(event, context):
     bitcoin_data = getCoinData("bitcoin")
+
     prices = bitcoin_data[0]
+    new_prices = []
     market_caps = bitcoin_data[1]
+    new_market_caps = []
     volumes = bitcoin_data[2]
+    new_volumes = []
+    timeStamps = []
 
-    #creates an iterator that combines prices, market_caps and volumes intp tuples (I read its better and easier open for suggestions)
-    #resulting in an object that makes it easier to iterate over 
-    data = zip(prices, market_caps, volumes)
+    for price in prices:
+        date = datetime.fromtimestamp(price[0]/1000)
+        timeStamps.append(date.strftime("%D %T"))
+        new_prices.append(price[1])
 
-    #Creates a CSV file and fills it with data with for loop
+    for market_cap in market_caps:
+        new_market_caps.append(market_cap[1])
+
+    for volume in volumes:
+        new_volumes.append(volume[1])
+
+    rows = zip(timeStamps, new_prices, new_market_caps, new_volumes)
+    fields = ["Timestamp", "Price", "Market Cap", "Volume"]
+
     csv_string =""
-    for i in data:
+
+    for i in fields:
+        csv_string += i + ","
+    for i in rows:
         #ik fancy stuff ;)
-        csv_string += f"{i[0]}, { i[1]}, {i[2]} \n"
+        csv_string += f"{i[0]}, { i[1]}, {i[2]}, {i[3]} "
 
     #this saves the CSV data into the s3
-    s3 = boto3.client('s3')#defines the client to be s3
-    # bucket_name = "crypti-food"
-    # object_key = "coin-data/bitcoin.csv"
-    # s3.put_object(Bucket=bucket_name, Key=object_key, Body=csv_string)
+    #defines the client to be s3
+    s3 = boto3.client('s3')
     s3 = boto3.client('s3')
     s3.put_object(
         Bucket='crypti-food',
@@ -57,3 +72,36 @@ def getCoinData(coin_name, fiat_currency="usd", days="max"):
     volumes = coin_market_data["total_volumes"]
 
     return prices, market_caps, volumes
+
+def test():
+    bitcoin_data = getCoinData("bitcoin")
+
+    prices = bitcoin_data[0]
+    new_prices = []
+    market_caps = bitcoin_data[1]
+    new_market_caps = []
+    volumes = bitcoin_data[2]
+    new_volumes = []
+    timeStamps = []
+
+    for price in prices:
+        date = datetime.fromtimestamp(price[0]/1000)
+        timeStamps.append(date.strftime("%D %T"))
+        new_prices.append(price[1])
+
+    for market_cap in market_caps:
+        new_market_caps.append(market_cap[1])
+
+    for volume in volumes:
+        new_volumes.append(volume[1])
+
+    rows = zip(timeStamps, new_prices, new_market_caps, new_volumes)
+    fields = [ "TimeStamp", "Price", "Market Cap", "Volume"]
+
+    csv_string =""
+
+    for i in fields:
+        csv_string += i + ","
+    for i in rows:
+        #ik fancy stuff ;)
+        csv_string += f"{i[0]}, { i[1]}, {i[2]} , {i[3]}\n"
