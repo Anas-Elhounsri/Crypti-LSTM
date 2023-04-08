@@ -48,7 +48,6 @@ def lambda_handler(event, context):
     #this saves the CSV data into the s3
     #defines the client to be s3
     s3 = boto3.client('s3')
-    s3 = boto3.client('s3')
     s3.put_object(
         Bucket='crypti-food',
         Key='coin-market-data/{}.csv'.format("bitcoin"),

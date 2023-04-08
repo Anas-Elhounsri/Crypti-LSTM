@@ -1,31 +1,31 @@
 import numpy as np
+import csv
 import pandas as pd
 import matplotlib.pyplot as plt
 from keras.models import Sequential
-from keras.layers import LSTM, Dense
+from keras.layers import LSTM, Dense, Flatten
+from sklearn.preprocessing import MinMaxScaler
 
 # from GeckoApiTools import getCoinData
 
-# bitcoin_data = getCoinData("bitcoin")
-
-# prices = bitcoin_data[0]
-# market_caps = bitcoin_data[1]
-# volumes = bitcoin_data[2]
-
 data_op = pd.read_csv("BTC-USD.csv", usecols=[1])
 
-#normalizing the data to values between -1 and 1 since LSTM uses 
-#activation functions tanh
+# normalizing the data to values between 0 and 1 since LSTM uses 
+# activation functions tanh which sensitive to certian magnitude
 data_op = data_op.values.reshape(-1, 1)
-data_op = data_op / np.max(data_op)
+scaler = MinMaxScaler(feature_range= (0,1))
+data_op = scaler.fit_transform(data_op)
+# plt.plot(data_op)
+# plt.show()
+#data_op = (data_op - min(data_op))/(max(data_op)-min(data_op))
 
 #sliptting the data to 80% training and 20% testing
 train_size = int(len(data_op) * 0.8)
 test_size = len(data_op) - train_size
 train_data, test_data = data_op[0:train_size,:], data_op[train_size:len(data_op),:]
 
-############################################################
-#create input and output function data for our LSTM model
+###########################################################
+# create input and output function data for our LSTM model
 def lstm_dataset(data_op, look_back=1):
     x,y =[],[]
 
@@ -37,10 +37,6 @@ def lstm_dataset(data_op, look_back=1):
         y.append(data_op[i + look_back, 0])
 
     return np.array(x), np.array(y)
-
-# [1,2,3,4,5,6,7,8,9,10]
-# x=[[1,2,3],[2,3,4]]
-# y = [4,5]
 
 look_back = 30
 train_x, train_y = lstm_dataset(train_data,look_back)#80% of the data
@@ -71,35 +67,75 @@ model.compile(loss='mean_squared_error', optimizer='adam')
 
 #prints a summary of the model architecture
 model.summary()
-#by defaulytn the activation function used by the LSTM layer in Keras is Tanh
 
 ############################################################
 #training and evaluating the LSTM model
-#fiiting and training the model on the training data
+#fitting and training the model on the training data
 model.fit(train_x, train_y, validation_data=(test_x, test_y),verbose=2, epochs=100)
 
+#Finally predition and inverting the data
+train_predictions = model.predict(train_x)
+test_predictions = model.predict(test_x)
+
 #Evaluate the LSTM model
-#double check the evaluation process
+#(Self Note)double check the evaluation process
 train_score = model.evaluate(train_x, train_y, verbose=0)
 test_score = model.evaluate(test_x, test_y, verbose=0)
 print('Train Score: {:.2f} MSE, ({:.2f} RMSE)'.format(train_score, np.sqrt(train_score)))
 print('Test Score: {:.2f} MSE, ({:.2f} RMSE)'.format(test_score, np.sqrt(test_score)))
 
-############################################################
-#Finally predition and normilizing the data
-train_predictions = model.predict(train_x)
-test_predictions = model.predict(test_x)
-
 # Invert the normalization of the data
-train_predictions = train_predictions * np.max(data_op)
-train_Y = train_y * np.max(data_op)
-test_predictions = test_predictions * np.max(data_op)
-test_Y = test_y * np.max(data_op)
+train_predictions = scaler.inverse_transform(train_predictions)
+train_y = scaler.inverse_transform([train_y])
+test_predictions = scaler.inverse_transform(test_predictions)
+test_y = scaler.inverse_transform([test_y])
 
-#Plotting the prediction 
-plt.plot(train_y, label = "train_y")
-plt.plot(train_predictions, label="train_predictions")
-plt.plot(test_y, label = "test_y")
-plt.plot(test_predictions, label = "test_predictions")
-plt.legend(title = "Legend")
-plt.show()
+# Plotting the prediction 
+# plt.plot(train_predictions, label='Train Predictions')
+# plt.plot(train_y.flatten(), label='Train Y')
+# plt.plot(test_predictions, label='Test Predictions')
+# plt.plot(test_y.flatten(), label='Test Y')
+# plt.legend()
+# plt.xlabel('Time')
+# plt.ylabel('Value')
+# plt.title('Predicted vs Actual Values')
+# plt.show()
+
+last_thirty_days = data_op[-30:]
+predicted_days = []
+count = 0
+
+for i in range(30):
+
+    #reshapes the data accordingly for the LSTM model e.g[[['a'],['b'],['c']]]
+    last_thirty_days = last_thirty_days.reshape(1,1,30)
+    #predicts the next 30 days
+    predictions = model.predict(last_thirty_days)
+    predicted_days.append(predictions)
+
+    #adds the predicted day at the end the list
+    last_thirty_days = np.append(last_thirty_days, predictions)
+    #shifts the list to get rid of the oldest day and keep it 30 days for the LSTM to predict with the new data
+    last_thirty_days = last_thirty_days[1:]
+
+    #printing a counter to make sure it loops 30 times
+    print("this is count: " + str(count))
+    # print(last_thirty_days)
+    count = count + 1
+
+#converts the predicted days to a numpy array
+predicted_days = np.array(predicted_days)
+#reverts the values of the predicted days to original values while reshaping the array into a 2D array
+predicted_days = scaler.inverse_transform(predicted_days.reshape(-1,1))
+print(predicted_days)
+
+csv_file = "output.csv" 
+with open(csv_file, 'w', newline='') as file:
+    writer = csv.writer(file)
+    writer.writerow(["Prices"])
+    for row in predicted_days:
+        writer.writerow(row)
+
+
+
+
