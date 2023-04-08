@@ -35,7 +35,7 @@ def lambda_handler(event, context):
         new_volumes.append(volume[1])
 
     rows = zip(timeStamps, new_prices, new_market_caps, new_volumes)
-    fields = ["Timestamp", "Price", "Market Cap", "Volume"]
+    fields = [ "TimeStamp", "Price", "Market Cap", "Volume"]
 
     csv_string =""
 
@@ -43,13 +43,13 @@ def lambda_handler(event, context):
         csv_string += i + ","
     for i in rows:
         #ik fancy stuff ;)
-        csv_string += f"{i[0]}, { i[1]}, {i[2]}, {i[3]} "
+        csv_string += f"{i[0]}, { i[1]}, {i[2]} , {i[3]}\n"
 
     #this saves the CSV data into the s3
     #defines the client to be s3
     s3 = boto3.client('s3')
     s3.put_object(
-        Bucket='crypti-food',
+        Bucket='crypti-data',
         Key='coin-market-data/{}.csv'.format("bitcoin"),
         Body=csv_string
         )
@@ -71,36 +71,3 @@ def getCoinData(coin_name, fiat_currency="usd", days="max"):
     volumes = coin_market_data["total_volumes"]
 
     return prices, market_caps, volumes
-
-def test():
-    bitcoin_data = getCoinData("bitcoin")
-
-    prices = bitcoin_data[0]
-    new_prices = []
-    market_caps = bitcoin_data[1]
-    new_market_caps = []
-    volumes = bitcoin_data[2]
-    new_volumes = []
-    timeStamps = []
-
-    for price in prices:
-        date = datetime.fromtimestamp(price[0]/1000)
-        timeStamps.append(date.strftime("%D %T"))
-        new_prices.append(price[1])
-
-    for market_cap in market_caps:
-        new_market_caps.append(market_cap[1])
-
-    for volume in volumes:
-        new_volumes.append(volume[1])
-
-    rows = zip(timeStamps, new_prices, new_market_caps, new_volumes)
-    fields = [ "TimeStamp", "Price", "Market Cap", "Volume"]
-
-    csv_string =""
-
-    for i in fields:
-        csv_string += i + ","
-    for i in rows:
-        #ik fancy stuff ;)
-        csv_string += f"{i[0]}, { i[1]}, {i[2]} , {i[3]}\n"
