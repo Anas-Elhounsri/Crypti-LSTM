@@ -1,31 +1,40 @@
+import boto3
 import json
 from keras.models import load_model
 import numpy as np
 import csv
 import pandas as pd
-from keras.models import load_model
+import io
 from sklearn.preprocessing import MinMaxScaler
-
-data_op = pd.read_csv("BTC-USD.csv", usecols = [1])
 
 def lambda_handler(event, context):
 
+    s3_client = boto3.client('s3')
+
+    bucket_name = 'crypti-hist'
+    object_key = 'coin-market-data/bitcoin.csv'
+
+    #selects the S3 bucket
+    response = s3_client.get_object(Bucket=bucket_name, Key=object_key)
+    #reads the file
+    data = response['Body'].read()
+    #converts the file into readable format
+    data_file = io.BytesIO(data)
+    data_op = pd.read_csv(data_file, usecols = [1])
+
+    # loads the serialized LSTM
     lstm_model = load_model("crypti-lstm.h5")
-    data_op = data_op.values.reshape(-1, 1)
     scaler = MinMaxScaler(feature_range = (0,1))
+
+    data_op = data_op.values.reshape(-1, 1)
     data_op = scaler.fit_transform(data_op)
     
     last_thirty_days = data_op[-30:]
     predicted_days = []
-    count = 0
-
-    last_thirty_days = data_op[-30:]
-    predicted_days = []
-    count = 0
-
+ 
     for i in range(30):
 
-        #reshapes the data accordingly for the LSTM model e.g[[['a'],['b'],['c']]]
+        #reshapes the data accordingly for the LSTM model e.g [[['a'],['b'],['c']]]
         last_thirty_days = last_thirty_days.reshape(1,1,30)
         #predicts the next 30 days
         predictions = lstm_model.predict(last_thirty_days)
@@ -46,12 +55,12 @@ def lambda_handler(event, context):
     #reverts the values of the predicted days to original values while reshaping the array into a 2D array
     predicted_days = scaler.inverse_transform(predicted_days.reshape(-1,1))
 
-    csv_file = "output.csv" 
-    with open(csv_file, 'w', newline='') as file:
-        writer = csv.writer(file)
-        writer.writerow(["Prices"])
-        for row in predicted_days:
-            writer.writerow(row)
+    # csv_file = "output.csv" 
+    # with open(csv_file, 'w', newline='') as file:
+    #     writer = csv.writer(file)
+    #     writer.writerow(["Prices"])
+    #     for row in predicted_days:
+    #         writer.writerow(row)
 
     return {
         'statusCode': 200,

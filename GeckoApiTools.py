@@ -49,7 +49,7 @@ def lambda_handler(event, context):
     #defines the client to be s3
     s3 = boto3.client('s3')
     s3.put_object(
-        Bucket='crypti-data',
+        Bucket='crypti-hist',
         Key='coin-market-data/{}.csv'.format("bitcoin"),
         Body=csv_string
         )

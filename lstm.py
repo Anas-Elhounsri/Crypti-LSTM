@@ -93,6 +93,8 @@ train_y = scaler.inverse_transform([train_y])
 test_predictions = scaler.inverse_transform(test_predictions)
 test_y = scaler.inverse_transform([test_y])
 
+############################################################
+
 # Plotting the prediction 
 # plt.plot(train_predictions, label='Train Predictions')
 # plt.plot(train_y.flatten(), label='Train Y')
