@@ -1,7 +1,11 @@
 import numpy as np
+import boto3
 import csv
+import io
+import json
 import pandas as pd
 import matplotlib.pyplot as plt
+import datetime
 from keras.models import Sequential
 from keras.layers import LSTM, Dense, Flatten
 from keras.models import load_model
@@ -73,25 +77,83 @@ model.summary()
 #training and evaluating the LSTM model
 #fitting and training the model on the training data
 model.fit(train_x, train_y, validation_data = (test_x, test_y), verbose = 2, epochs = 100)
-#serialzes the trained model in a format that can be later loaded and reconstructed for making predictions 
-model.save('crypti-lstm.h5')
 
+# s3_client = boto3.client('s3')
+
+# bucket_name = 'crypti-hist'
+# object_key = 'coin-market-data/bitcoin.csv'
+
+#selects the S3 bucket
+# response = s3_client.get_object(Bucket=bucket_name, Key=object_key)
+#reads the file
+# data = response['Body'].read()
+# #converts the file into readable format
+# data_file = io.BytesIO(data)
+# data_op = pd.read_csv(data_file, usecols = [1])
+
+last_thirty_days = data_op[-30:]
+predicted_days = []
+count = 0
+
+for i in range(30):
+
+    #reshapes the data accordingly for the LSTM model e.g[[['a'],['b'],['c']]]
+    last_thirty_days = last_thirty_days.reshape(1,1,30)
+    #predicts the next 30 days
+    predictions = model.predict(last_thirty_days)
+    predicted_days.append(predictions)
+
+    #adds the predicted day at the end the list
+    last_thirty_days = np.append(last_thirty_days, predictions)
+    #shifts the list to get rid of the oldest day and keep it 30 days for the LSTM to predict with the new data
+    last_thirty_days = last_thirty_days[1:]
+
+    #printing a counter to make sure it loops 30 times
+    print("this is count: " + str(count))
+    # print(last_thirty_days)
+    count = count + 1
+
+#converts the predicted days to a numpy array
+predicted_days = np.array(predicted_days)
+#reverts the values of the predicted days to original values while reshaping the array into a 2D array
+predicted_days = scaler.inverse_transform(predicted_days.reshape(-1,1))
+print(predicted_days)
+
+ct = datetime.datetime.now()
+dict_data = {
+    "Coin name" : "BTC",
+    "Timestamp": ct.isoformat(),
+    "Prediction price list": predicted_days.tolist()
+}
+
+with open("sample.json", "w") as outfile:
+    json.dump(dict_data, outfile)
+
+
+# csv_file = "output.csv" 
+# with open(csv_file, 'w', newline='') as file:
+#     writer = csv.writer(file)
+#     writer.writerow(["Prices"])
+#     for row in predicted_days:
+#         writer.writerow(row)
+
+############################################################
 #Finally predition and inverting the data
-train_predictions = model.predict(train_x)
-test_predictions = model.predict(test_x)
+# train_predictions = model.predict(train_x)
+# test_predictions = model.predict(test_x)
 
-#Evaluate the LSTM model
-#(Self Note)double check the evaluation process
-train_score = model.evaluate(train_x, train_y, verbose = 0)
-test_score = model.evaluate(test_x, test_y, verbose = 0)
-print('Train Score: {:.2f} MSE, ({:.2f} RMSE)'.format(train_score, np.sqrt(train_score)))
-print('Test Score: {:.2f} MSE, ({:.2f} RMSE)'.format(test_score, np.sqrt(test_score)))
+# #Evaluate the LSTM model
+# #(Self Note)double check the evaluation process
+# train_score = model.evaluate(train_x, train_y, verbose = 0)
+# test_score = model.evaluate(test_x, test_y, verbose = 0)
+# print('Train Score: {:.2f} MSE, ({:.2f} RMSE)'.format(train_score, np.sqrt(train_score)))
+# print('Test Score: {:.2f} MSE, ({:.2f} RMSE)'.format(test_score, np.sqrt(test_score)))
 
-# Invert the normalization of the data
-train_predictions = scaler.inverse_transform(train_predictions)
-train_y = scaler.inverse_transform([train_y])
-test_predictions = scaler.inverse_transform(test_predictions)
-test_y = scaler.inverse_transform([test_y])
+# # Invert the normalization of the data
+# train_predictions = scaler.inverse_transform(train_predictions)
+# train_y = scaler.inverse_transform([train_y])
+# test_predictions = scaler.inverse_transform(test_predictions)
+# test_y = scaler.inverse_transform([test_y])
 
 ############################################################
 
@@ -105,41 +167,7 @@ test_y = scaler.inverse_transform([test_y])
 # plt.ylabel('Value')
 # plt.title('Predicted vs Actual Values')
 # plt.show()
-
-# last_thirty_days = data_op[-30:]
-# predicted_days = []
-# count = 0
-
-# for i in range(30):
-
-#     #reshapes the data accordingly for the LSTM model e.g[[['a'],['b'],['c']]]
-#     last_thirty_days = last_thirty_days.reshape(1,1,30)
-#     #predicts the next 30 days
-#     predictions = model.predict(last_thirty_days)
-#     predicted_days.append(predictions)
-
-#     #adds the predicted day at the end the list
-#     last_thirty_days = np.append(last_thirty_days, predictions)
-#     #shifts the list to get rid of the oldest day and keep it 30 days for the LSTM to predict with the new data
-#     last_thirty_days = last_thirty_days[1:]
-
-#     #printing a counter to make sure it loops 30 times
-#     print("this is count: " + str(count))
-#     # print(last_thirty_days)
-#     count = count + 1
-
-# #converts the predicted days to a numpy array
-# predicted_days = np.array(predicted_days)
-# #reverts the values of the predicted days to original values while reshaping the array into a 2D array
-# predicted_days = scaler.inverse_transform(predicted_days.reshape(-1,1))
-# print(predicted_days)
-
-# csv_file = "output.csv" 
-# with open(csv_file, 'w', newline='') as file:
-#     writer = csv.writer(file)
-#     writer.writerow(["Prices"])
-#     for row in predicted_days:
-#         writer.writerow(row)
+############################################################
 
 
 
