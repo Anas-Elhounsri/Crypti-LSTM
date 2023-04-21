@@ -1,3 +1,7 @@
-
+numpy
+tensorflow
+keras
+pandas
+matplotlib
 scikit-learn
 boto3
