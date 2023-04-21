@@ -4,3 +4,4 @@ matplotlib
 tensorflow
 pycoingecko
 boto3
+scikit-learn
