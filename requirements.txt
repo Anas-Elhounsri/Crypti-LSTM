@@ -3,3 +3,5 @@ pandas
 matplotlib
 tensorflow
 pycoingecko
+scikit-learn
+boto3

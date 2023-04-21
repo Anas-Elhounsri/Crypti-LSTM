@@ -13,7 +13,19 @@ from sklearn.preprocessing import MinMaxScaler
 
 # from GeckoApiTools import getCoinData
 
-data_op = pd.read_csv("BTC-USD.csv", usecols = [1])
+# data_op = pd.read_csv("BTC-USD.csv", usecols = [1])
+s3_client = boto3.client('s3')
+
+bucket_name = 'crypti-hist'
+object_key = 'coin-market-data/bitcoin.csv'
+
+# selects the S3 bucket
+response = s3_client.get_object(Bucket=bucket_name, Key=object_key)
+# reads the file
+data = response['Body'].read()
+#converts the file into readable format
+data_file = io.BytesIO(data)
+data_op = pd.read_csv(data_file, usecols = [1])
 
 # normalizing the data to values between 0 and 1 since LSTM uses 
 # activation functions tanh which sensitive to certian magnitude
@@ -78,19 +90,6 @@ model.summary()
 #fitting and training the model on the training data
 model.fit(train_x, train_y, validation_data = (test_x, test_y), verbose = 2, epochs = 100)
 
-# s3_client = boto3.client('s3')
-
-# bucket_name = 'crypti-hist'
-# object_key = 'coin-market-data/bitcoin.csv'
-
-#selects the S3 bucket
-# response = s3_client.get_object(Bucket=bucket_name, Key=object_key)
-#reads the file
-# data = response['Body'].read()
-# #converts the file into readable format
-# data_file = io.BytesIO(data)
-# data_op = pd.read_csv(data_file, usecols = [1])
-
 last_thirty_days = data_op[-30:]
 predicted_days = []
 count = 0
@@ -117,17 +116,27 @@ for i in range(30):
 predicted_days = np.array(predicted_days)
 #reverts the values of the predicted days to original values while reshaping the array into a 2D array
 predicted_days = scaler.inverse_transform(predicted_days.reshape(-1,1))
-print(predicted_days)
+
+json_arr = predicted_days[:,0].tolist()
 
 ct = datetime.datetime.now()
 dict_data = {
-    "Coin name" : "BTC",
-    "Timestamp": ct.isoformat(),
-    "Prediction price list": predicted_days.tolist()
+    "coin_name" : "BTC",
+    "timestamp": ct.isoformat(),
+    "prediction_price_list": json_arr
 }
 
-with open("sample.json", "w") as outfile:
-    json.dump(dict_data, outfile)
+with open("sample.json", "w") as f:
+    json.dump(dict_data, f)
+
+filename = 'sample.json'
+bucket_name = 'crypti-predict'
+object_key = '/home/ec2-user/Crypti-LSTM/' + filename
+
+s3_client.upload_file(object_key, bucket_name, filename)
+
+print("Works fine!!")
+print(response)
 
 
 # csv_file = "output.csv" 
