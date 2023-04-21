@@ -20,7 +20,7 @@ bucket_name = 'crypti-hist'
 object_key = 'coin-market-data/bitcoin.csv'
 
 # selects the S3 bucket
-response = s3_client.get_object(Bucket=bucket_name, Key=object_key, aws_access_key_id= 'AKIAS5AQZDWQUWEXTBWE', aws_secret_access_key= '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')
+response = s3_client.get_object(Bucket=bucket_name, Key=object_key)
 # reads the file
 data = response['Body'].read()
 #converts the file into readable format
