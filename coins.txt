@@ -1,0 +1,10 @@
+bitcoin
+ethereum
+tether
+ripple
+cardano
+dogecoin
+solana
+litecoin
+tron
+shiba-inu
