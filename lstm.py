@@ -132,10 +132,9 @@ for content in response['Contents']:
         json.dump(dict_data, f)
 
     filename = f'{coin_name}.json'
-    bucket_name = 'crypti-predict'
     object_key =  filename
 
-    s3_client.upload_file(object_key, bucket_name, filename)
+    s3_client.upload_file(object_key, dst_bucket_name, filename)
 
     print("Works fine!!")
     print(response)
