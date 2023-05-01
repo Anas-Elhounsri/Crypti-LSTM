@@ -1,7 +1,7 @@
 # Crypti-LSTM 
 This is an enhanced version of the [Crypti](https://github.com/1337Farhan/Crypti) project, which now uses a simple artificial neural networks model (Long Short-Term Memory) that takes one input (prices) and one output (predicted prices) all implemented in an automated cloud architecture (AWS).
 ## 1. Introduction 
-The development team consists of me, [@1337Farhan](https://github.com/1337Farhan) and [@mosman4](https://github.com/mosman4/).
+The development team consists of me, [@1337Farhan](https://github.com/1337Farhan) and [@mosman4](https://github.com/mosman4/), with me responsible of developing the Crypti-LSTM and AWS architecture.
 ## 2. How was the cloud was set up? ☁️
 Unfortunately I can't include more details on how to implement the architecture in detail but I will show an overview on what you need! We are going to list the necessary services needed for our architecture:
 - AWS CLI
