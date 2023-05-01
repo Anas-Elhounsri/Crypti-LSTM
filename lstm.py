@@ -12,10 +12,10 @@ from keras.models import load_model
 from sklearn.preprocessing import MinMaxScaler
 
 s3_client = boto3.client('s3')
-src_bucket_name = 'crypti-hist'
-dst_bucket_name = 'crypti-predict'
+src_bucket_name = 's3-bucket-name'
+dst_bucket_name = 's3-bucket-name'
 # lists the objects in the s3 bucket '(the csv files)
-response = s3_client.list_objects(Bucket=src_bucket_name, Prefix='coin-market-data/')
+response = s3_client.list_objects(Bucket=src_bucket_name, Prefix='object-name/')
 
 #This will loop through each object for processing and predicting data
 for content in response['Contents']:
