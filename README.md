@@ -22,8 +22,8 @@ All of the scripts mentioned are well commented to expalin how they work:
 - The eventBridge triggers `GeckoApiTools.py` once a month at a specific time, say at the begining of each month at 11:00AM.
 - Then it triggers the Lambda function `ec2_on.py`  to turn on the EC2 instance at 11:10AM (it's better to give the instance some time to turn on).
 - Now the EC2 will get triggered by a cron job at 11:20AM to run `lstm.py`.
-- `lstm.py` will process, train and predict data to put it on the s3 bucket (lstm.py is well commented and explains how preparing the data, training and predicting process works)
-- After a while, the eventBridge will trigger ec2_off.py at 11:30AM to turn off the EC2.
+- `lstm.py` will process, train and predict data to put it on the s3 bucket (`lstm.py` is well commented and explains how preparing the data, training and predicting process works)
+- After a while, the eventBridge will trigger `ec2_off.py` at 11:30AM to turn off the EC2.
 ## 4. The cloud architecture
 (A picture will be here)
 ## 5. Weakness in Crypti's LSTM🐛
