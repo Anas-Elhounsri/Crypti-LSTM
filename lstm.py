@@ -89,6 +89,16 @@ for content in response['Contents']:
     #fitting and training the model on the training data
     model.fit(train_x, train_y, validation_data = (test_x, test_y), verbose = 2, epochs = 100)
 
+    train_predictions = model.predict(train_x)
+    test_predictions = model.predict(test_x)
+
+    #Evaluate the LSTM model
+    #(Self Note)double check the evaluation process
+    train_score = model.evaluate(train_x, train_y, verbose = 0)
+    test_score = model.evaluate(test_x, test_y, verbose = 0)  
+    print('Train Score: {:.2f} MSE, ({:.2f} RMSE)'.format(train_score, np.sqrt(train_score)))
+    print('Test Score: {:.2f} MSE, ({:.2f} RMSE)'.format(test_score, np.sqrt(test_score)))
+
     last_thirty_days = data_op[-30:]
     predicted_days = []
     count = 0
@@ -117,14 +127,16 @@ for content in response['Contents']:
     predicted_days = scaler.inverse_transform(predicted_days.reshape(-1,1))
 
     json_arr = predicted_days[:,0].tolist()
-    ct = datetime.datetime.now()
+    ct = datetime.datetime.utcnow()
     
     #This slicing operation gets the name of the coins from content['Key'] array
     coin_name = content['Key'].split('/')[1].split('.')[0]
     dict_data = {
         "coin_name" : coin_name,
         "timestamp": ct.isoformat(),
-        "prediction_price_list": json_arr
+        "prediction_price_list": json_arr,
+        "mse": f'{train_score}',
+        "rmse": f'{np.sqrt(train_score)}'
     }
 
     #creates a json file
