@@ -11,7 +11,6 @@ from keras.layers import LSTM, Dense, Flatten
 from keras.models import load_model
 from sklearn.preprocessing import MinMaxScaler
 
-# data_op = pd.read_csv("BTC-USD.csv", usecols = [1])
 s3_client = boto3.client('s3')
 src_bucket_name = 'crypti-hist'
 dst_bucket_name = 'crypti-predict'
@@ -120,7 +119,7 @@ for content in response['Contents']:
     json_arr = predicted_days[:,0].tolist()
     ct = datetime.datetime.now()
     
-    #This slicing operation gets the name of the coins from content['Key']
+    #This slicing operation gets the name of the coins from content['Key'] array
     coin_name = content['Key'].split('/')[1].split('.')[0]
     dict_data = {
         "coin_name" : coin_name,
@@ -128,12 +127,14 @@ for content in response['Contents']:
         "prediction_price_list": json_arr
     }
 
+    #creates a json file
     with open(f'{coin_name}.json', "w") as f:
         json.dump(dict_data, f)
 
     filename = f'{coin_name}.json'
     object_key =  filename
 
+    #uploads the file into an different s3 bucket
     s3_client.upload_file(object_key, dst_bucket_name, filename)
 
     print("Works fine!!")
