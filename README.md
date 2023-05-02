@@ -36,4 +36,4 @@ This is a long running project that will keep getting improved along development
   - Improving the security.
 - Use a different neural networks model (Transformers).
 ## 7. Disclaimer ❗❗❗
-This is in no way can be used as a reliable financial indicator, this was only developed for educational and testing purposes and should not be relied for any financial decisions.
+This is in no way can be used as a reliable financial indicator, this was only developed for educational and testing purposes and should not be relied on for any financial decisions.
