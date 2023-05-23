@@ -11,11 +11,12 @@ from keras.layers import LSTM, Dense, Flatten
 from keras.models import load_model
 from sklearn.preprocessing import MinMaxScaler
 
+look_back = 60
 s3_client = boto3.client('s3')
-src_bucket_name = 's3-bucket-name'
-dst_bucket_name = 's3-bucket-name'
+src_bucket_name = 'crypti-hist'
+dst_bucket_name = 'crypti-predict'
 # lists the objects in the s3 bucket '(the csv files)
-response = s3_client.list_objects(Bucket=src_bucket_name, Prefix='object-name/')
+response = s3_client.list_objects(Bucket=src_bucket_name, Prefix='coin-market-data/')
 
 #This will loop through each object for processing and predicting data
 for content in response['Contents']:
@@ -54,7 +55,6 @@ for content in response['Contents']:
 
         return np.array(x), np.array(y)
 
-    look_back = 30
     train_x, train_y = lstm_dataset(train_data,look_back)#80% of the data
     test_x, test_y = lstm_dataset(test_data,look_back)#the remaining 20% of the data
 
@@ -72,11 +72,13 @@ for content in response['Contents']:
     #adds and LSTM layer to the model with 64 LSTM units in the layer
     #the input_shape parameter specifies the shape of the input data, 
     #which in this case is one feature(Opening prices) and look_back which is 10 days 
-    model.add(LSTM(64, input_shape = (1, look_back)))
+    model.add(LSTM(64, input_shape = (1, look_back), return_sequences=True))
+    model.add(LSTM(64, return_sequences=True))
+    model.add(LSTM(64))
 
     #adds a Dense layer, the 1 parameter specifies the output size of the layer
-    model.add(Dense(1))#needs some research
 
+    model.add(Dense(30))
     #compiles the model while specifying the loss function and optimizer
     #adam is a common optimizer used in deep learning
     model.compile(loss = 'mean_squared_error', optimizer = 'adam')
@@ -99,46 +101,30 @@ for content in response['Contents']:
     print('Train Score: {:.2f} MSE, ({:.2f} RMSE)'.format(train_score, np.sqrt(train_score)))
     print('Test Score: {:.2f} MSE, ({:.2f} RMSE)'.format(test_score, np.sqrt(test_score)))
 
-    last_thirty_days = data_op[-30:]
+    last_thirty_days = data_op[-look_back:]
     predicted_days = []
     count = 0
 
-    for i in range(30):
-
-        #reshapes the data accordingly for the LSTM model e.g[[['a'],['b'],['c']]]
-        last_thirty_days = last_thirty_days.reshape(1,1,30)
-        #predicts the next 30 days
-        predictions = model.predict(last_thirty_days)
-        predicted_days.append(predictions)
-
-        #adds the predicted day at the end the list
-        last_thirty_days = np.append(last_thirty_days, predictions)
-        #shifts the list to get rid of the oldest day and keep it 30 days for the LSTM to predict with the new data
-        last_thirty_days = last_thirty_days[1:]
-
-        #printing a counter to make sure it loops 30 times
-        print("this is count: " + str(count))
-        # print(last_thirty_days)
-        count = count + 1
-
-    #converts the predicted days to a numpy array
+    last_thirty_days = last_thirty_days.reshape(1,1,look_back)
+    #predicts the next 30 days
+    predictions = model.predict(last_thirty_days)
+    predicted_days.append(predictions)
     predicted_days = np.array(predicted_days)
-    #reverts the values of the predicted days to original values while reshaping the array into a 2D array
     predicted_days = scaler.inverse_transform(predicted_days.reshape(-1,1))
-
+    
     json_arr = predicted_days[:,0].tolist()
     ct = datetime.datetime.utcnow()
-    
+
     #This slicing operation gets the name of the coins from content['Key'] array
     coin_name = content['Key'].split('/')[1].split('.')[0]
     dict_data = {
-        "coin_name" : coin_name,
-        "timestamp": ct.isoformat(),
-        "prediction_price_list": json_arr,
-        "mse": f'{train_score}',
-        "rmse": f'{np.sqrt(train_score)}'
-    }
-
+         "coin_name" : coin_name,
+         "timestamp": ct.isoformat(),
+         "prediction_price_list": json_arr,
+         "mse": f'{train_score}',
+         "rmse": f'{np.sqrt(train_score)}'
+     }
+    
     #creates a json file
     with open(f'{coin_name}.json', "w") as f:
         json.dump(dict_data, f)
@@ -146,11 +132,60 @@ for content in response['Contents']:
     filename = f'{coin_name}.json'
     object_key =  filename
 
-    #uploads the file into an different s3 bucket
+    # uploads the file into an different s3 bucket
     s3_client.upload_file(object_key, dst_bucket_name, filename)
 
+    print(predicted_days)
     print("Works fine!!")
-    print(response)
+
+    # for i in range(30):
+
+    #     #reshapes the data accordingly for the LSTM model e.g[[['a'],['b'],['c']]]
+    #     last_thirty_days = last_thirty_days.reshape(1,1,30)
+    #     #predicts the next 30 days
+    #     predictions = model.predict(last_thirty_days)
+    #     predicted_days.append(predictions)
+
+    #     #adds the predicted day at the end the list
+    #     last_thirty_days = np.append(last_thirty_days, predictions)
+    #     #shifts the list to get rid of the oldest day and keep it 30 days for the LSTM to predict with the new data
+    #     last_thirty_days = last_thirty_days[1:]
+
+    #     #printing a counter to make sure it loops 30 times
+    #     print("this is count: " + str(count))
+    #     # print(last_thirty_days)
+    #     count = count + 1
+
+    # #converts the predicted days to a numpy array
+    # predicted_days = np.array(predicted_days)
+    # #reverts the values of the predicted days to original values while reshaping the array into a 2D array
+    # predicted_days = scaler.inverse_transform(predicted_days.reshape(-1,1))
+
+    # json_arr = predicted_days[:,0].tolist()
+    # ct = datetime.datetime.utcnow()
+    
+    # #This slicing operation gets the name of the coins from content['Key'] array
+    # coin_name = content['Key'].split('/')[1].split('.')[0]
+    # dict_data = {
+    #     "coin_name" : coin_name,
+    #     "timestamp": ct.isoformat(),
+    #     "prediction_price_list": json_arr,
+    #     "mse": f'{train_score}',
+    #     "rmse": f'{np.sqrt(train_score)}'
+    # }
+
+    # #creates a json file
+    # with open(f'{coin_name}.json', "w") as f:
+    #     json.dump(dict_data, f)
+
+    # filename = f'{coin_name}.json'
+    # object_key =  filename
+
+    # #uploads the file into an different s3 bucket
+    # s3_client.upload_file(object_key, dst_bucket_name, filename)
+
+    # print("Works fine!!")
+    # print(response)
 
 
 ######################################################
