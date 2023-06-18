@@ -11,12 +11,12 @@ from keras.layers import LSTM, Dense, Flatten
 from keras.models import load_model
 from sklearn.preprocessing import MinMaxScaler
 
-look_back = 60
+look_back = 30
 s3_client = boto3.client('s3')
-src_bucket_name = 'crypti-hist'
-dst_bucket_name = 'crypti-predict'
+src_bucket_name = "<Insert bucket name>"
+dst_bucket_name = "<Insert bucket name>"
 # lists the objects in the s3 bucket '(the csv files)
-response = s3_client.list_objects(Bucket=src_bucket_name, Prefix='coin-market-data/')
+response = s3_client.list_objects(Bucket=src_bucket_name, Prefix= "<Insert Prefix name if any>" )
 
 #This will loop through each object for processing and predicting data
 for content in response['Contents']:
@@ -28,13 +28,10 @@ for content in response['Contents']:
     data_op = pd.read_csv(data_file, usecols = [1])
 
     # normalizing the data to values between 0 and 1 since LSTM uses 
-    # activation functions tanh which sensitive to certian magnitude
+    # activation functions tanh which sensitive to certain magnitude
     data_op = data_op.values.reshape(-1, 1)
     scaler = MinMaxScaler(feature_range = (0,1))
     data_op = scaler.fit_transform(data_op)
-    # plt.plot(data_op)
-    # plt.show()
-    #data_op = (data_op - min(data_op))/(max(data_op)-min(data_op))
 
     #sliptting the data to 80% training and 20% testing
     train_size = int(len(data_op) * 0.8)
@@ -71,7 +68,7 @@ for content in response['Contents']:
 
     #adds and LSTM layer to the model with 64 LSTM units in the layer
     #the input_shape parameter specifies the shape of the input data, 
-    #which in this case is one feature(Opening prices) and look_back which is 10 days 
+    #which in this case is one feature(Opening prices) and look_back which is 30 days 
     model.add(LSTM(64, input_shape = (1, look_back), return_sequences=True))
     model.add(LSTM(64, return_sequences=True))
     model.add(LSTM(64))
@@ -92,20 +89,29 @@ for content in response['Contents']:
     model.fit(train_x, train_y, validation_data = (test_x, test_y), verbose = 2, epochs = 100)
 
     train_predictions = model.predict(train_x)
+    print(f"This is train predictions:\n{train_predictions}")
+    print(f"Length: {len(train_predictions)}")
+    print(f"Length of train prediction arrays: {len(train_predictions[0])}")
     test_predictions = model.predict(test_x)
 
     #Evaluate the LSTM model
-    #(Self Note)double check the evaluation process
     train_score = model.evaluate(train_x, train_y, verbose = 0)
     test_score = model.evaluate(test_x, test_y, verbose = 0)  
     print('Train Score: {:.2f} MSE, ({:.2f} RMSE)'.format(train_score, np.sqrt(train_score)))
     print('Test Score: {:.2f} MSE, ({:.2f} RMSE)'.format(test_score, np.sqrt(test_score)))
 
+    #Invert the normalization of the data
+    train_predictions = scaler.inverse_transform(train_predictions)
+    train_y = scaler.inverse_transform([train_y])
+    test_predictions = scaler.inverse_transform(test_predictions)
+    test_y = scaler.inverse_transform([test_y])
+    
     last_thirty_days = data_op[-look_back:]
     predicted_days = []
     count = 0
 
     last_thirty_days = last_thirty_days.reshape(1,1,look_back)
+    
     #predicts the next 30 days
     predictions = model.predict(last_thirty_days)
     predicted_days.append(predictions)
@@ -115,7 +121,7 @@ for content in response['Contents']:
     json_arr = predicted_days[:,0].tolist()
     ct = datetime.datetime.utcnow()
 
-    #This slicing operation gets the name of the coins from content['Key'] array
+    # This slicing operation gets the name of the coins from content['Key'] array
     coin_name = content['Key'].split('/')[1].split('.')[0]
     dict_data = {
          "coin_name" : coin_name,
@@ -125,7 +131,7 @@ for content in response['Contents']:
          "rmse": f'{np.sqrt(train_score)}'
      }
     
-    #creates a json file
+    # creates a json file
     with open(f'{coin_name}.json', "w") as f:
         json.dump(dict_data, f)
 
@@ -138,90 +144,8 @@ for content in response['Contents']:
     print(predicted_days)
     print("Works fine!!")
 
-    # for i in range(30):
 
-    #     #reshapes the data accordingly for the LSTM model e.g[[['a'],['b'],['c']]]
-    #     last_thirty_days = last_thirty_days.reshape(1,1,30)
-    #     #predicts the next 30 days
-    #     predictions = model.predict(last_thirty_days)
-    #     predicted_days.append(predictions)
-
-    #     #adds the predicted day at the end the list
-    #     last_thirty_days = np.append(last_thirty_days, predictions)
-    #     #shifts the list to get rid of the oldest day and keep it 30 days for the LSTM to predict with the new data
-    #     last_thirty_days = last_thirty_days[1:]
-
-    #     #printing a counter to make sure it loops 30 times
-    #     print("this is count: " + str(count))
-    #     # print(last_thirty_days)
-    #     count = count + 1
-
-    # #converts the predicted days to a numpy array
-    # predicted_days = np.array(predicted_days)
-    # #reverts the values of the predicted days to original values while reshaping the array into a 2D array
-    # predicted_days = scaler.inverse_transform(predicted_days.reshape(-1,1))
-
-    # json_arr = predicted_days[:,0].tolist()
-    # ct = datetime.datetime.utcnow()
-    
-    # #This slicing operation gets the name of the coins from content['Key'] array
-    # coin_name = content['Key'].split('/')[1].split('.')[0]
-    # dict_data = {
-    #     "coin_name" : coin_name,
-    #     "timestamp": ct.isoformat(),
-    #     "prediction_price_list": json_arr,
-    #     "mse": f'{train_score}',
-    #     "rmse": f'{np.sqrt(train_score)}'
-    # }
-
-    # #creates a json file
-    # with open(f'{coin_name}.json', "w") as f:
-    #     json.dump(dict_data, f)
-
-    # filename = f'{coin_name}.json'
-    # object_key =  filename
-
-    # #uploads the file into an different s3 bucket
-    # s3_client.upload_file(object_key, dst_bucket_name, filename)
-
-    # print("Works fine!!")
-    # print(response)
-
-
-######################################################
-
-#Finally predition and inverting the data
-# train_predictions = model.predict(train_x)
-# test_predictions = model.predict(test_x)
-
-# #Evaluate the LSTM model
-# #(Self Note)double check the evaluation process
-# train_score = model.evaluate(train_x, train_y, verbose = 0)
-# test_score = model.evaluate(test_x, test_y, verbose = 0)
-# print('Train Score: {:.2f} MSE, ({:.2f} RMSE)'.format(train_score, np.sqrt(train_score)))
-# print('Test Score: {:.2f} MSE, ({:.2f} RMSE)'.format(test_score, np.sqrt(test_score)))
-
-# # Invert the normalization of the data
-# train_predictions = scaler.inverse_transform(train_predictions)
-# train_y = scaler.inverse_transform([train_y])
-# test_predictions = scaler.inverse_transform(test_predictions)
-# test_y = scaler.inverse_transform([test_y])
-
-######################################################
-
-# Plotting the prediction 
-# plt.plot(train_predictions, label='Train Predictions')
-# plt.plot(train_y.flatten(), label='Train Y')
-# plt.plot(test_predictions, label='Test Predictions')
-# plt.plot(test_y.flatten(), label='Test Y')
-# plt.legend()
-# plt.xlabel('Time')
-# plt.ylabel('Value')
-# plt.title('Predicted vs Actual Values')
-# plt.show()
-
-######################################################
-
+   
 
 
 
