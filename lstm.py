@@ -13,10 +13,10 @@ from sklearn.preprocessing import MinMaxScaler
 
 look_back = 30
 s3_client = boto3.client('s3')
-src_bucket_name = "<Insert bucket name>"
-dst_bucket_name = "<Insert bucket name>"
+src_bucket_name = "<Insert-bucket-name>"
+dst_bucket_name = "<Insert-bucket-name>"
 # lists the objects in the s3 bucket '(the csv files)
-response = s3_client.list_objects(Bucket=src_bucket_name, Prefix= "<Insert Prefix name if any>" )
+response = s3_client.list_objects(Bucket=src_bucket_name, Prefix= "<Insert-Prefix-name-if-any>" )
 
 #This will loop through each object for processing and predicting data
 for content in response['Contents']:
